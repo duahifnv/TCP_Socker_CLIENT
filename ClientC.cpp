@@ -11,10 +11,16 @@ SOCKET Connection;
 
 //функция приема сообщений от сервера
 void ClientHandler() {
-	char msg[MSG_MAX_SIZE];
+	int msg_size;
 	while (true) {
-		recv(Connection, msg, sizeof(msg), NULL);
+		recv(Connection, (char*)&msg_size, sizeof(int), NULL);
+		char* msg = new char[msg_size + 1];
+		msg[msg_size] = '\0';
+
+		recv(Connection, msg, msg_size, NULL);
 		cout << msg << endl;
+
+		delete[] msg;
 	}
 }
 
@@ -51,11 +57,13 @@ int main() {
 	CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ClientHandler, NULL, NULL, NULL);
 
 	//отправка сообщения серверу
-	char sendmsg[MSG_MAX_SIZE];
+	string sendmsg;
 	while (true) {
 		//cout << "Your message: ";
-		cin.getline(sendmsg, sizeof(sendmsg));
-		send(Connection, sendmsg, sizeof(sendmsg), NULL);
+		getline(cin, sendmsg);
+		int	msg_size = sendmsg.size();
+		send(Connection, (char*)&msg_size, sizeof(int), NULL); //размер принимаемой строки
+		send(Connection, sendmsg.c_str(), msg_size, NULL); 
 		Sleep(10);
 	}
 
