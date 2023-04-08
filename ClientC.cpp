@@ -3,7 +3,7 @@
 #pragma comment(lib, "ws2_32.lib")
 #include <winsock2.h>
 #pragma warning(disable:4996)
-#define MSG_MAX_SIZE 256 
+#define MSG_MAX_SIZE 256
 using namespace std;
 
 //создание сокета
