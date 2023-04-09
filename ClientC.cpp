@@ -15,7 +15,7 @@ SOCKET Connection;
 //типы пакетов
 enum Packet {
 	P_ChatMessage,
-	P_Test
+	P_GetFile
 };
 
 bool ProccessPacket(Packet packettype) {
@@ -35,8 +35,22 @@ bool ProccessPacket(Packet packettype) {
 		delete[] msg;
 		break;
 	}
-	case P_Test:
-		std::cout << "Test packet.\n";
+	case P_GetFile:
+		int FisF_size;
+		bool File_is_found;
+
+		recv(Connection, (char*)&FisF_size, sizeof(int), NULL);
+
+		recv(Connection, (char*)&File_is_found, FisF_size, NULL);
+
+		if (File_is_found) {
+			cout << "File found in system\n";
+		}
+
+		else {
+			cout << "File isn't found in system\n";
+		}
+		
 		break;
 
 	default: {
@@ -101,15 +115,26 @@ int main() {
 	//отправка сообщения серверу
 	string sendmsg;
 	while (true) {
+		Packet packettype;
+		
 		getline(cin, sendmsg);
+
+		//с-ния, начинающиеся с ! будут определены как чат
+		if (sendmsg[0] == '!') {
+			packettype = P_ChatMessage;
+			sendmsg.erase(0, 1);
+		}
+		else {
+			packettype = P_GetFile;
+		}
 
 		int	msg_size = sendmsg.size();
 
-		Packet packettype = P_ChatMessage;
 		send(Connection, (char*)&packettype, sizeof(Packet), NULL);
 
 		send(Connection, (char*)&msg_size, sizeof(int), NULL); //размер принимаемой строки
-		send(Connection, sendmsg.c_str(), msg_size, NULL); 
+
+		send(Connection, sendmsg.c_str(), msg_size, NULL);
 		Sleep(10);
 
 		if (sendmsg == exit_command) {
