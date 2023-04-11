@@ -12,62 +12,120 @@ using namespace std;
 //создание сокета
 SOCKET Connection;
 
+//глобальные файловые переменные
+FILE* fb;
+const char* filewrite = "SERVER_OUTPUT.txt";
+
 //типы пакетов
 enum Packet {
 	P_ChatMessage,
 	P_GetFile
 };
 
+void Writef(FILE *fb) {
+	/*int msg_len; //16Kb
+	do {
+		char buffer = ' ';
+		msg_len = recv(Connection, (char*)buffer, sizeof(buffer), NULL); //9
+		fwrite(&buffer, 1, msg_len, fb);	
+	} while (msg_len > 0);
+
+	fclose(fb);
+	*/
+	int Elements;
+	BYTE rmessage[4096]{ NULL };
+	//while ((Elements = recv(Connection, (char*)rmessage, sizeof(rmessage), 0)) != NULL) { //9
+	//	fwrite(rmessage, sizeof(BYTE), Elements, fb);
+	//}
+	Elements = recv(Connection, (char*)rmessage, sizeof(rmessage), 0);
+	fwrite(rmessage, sizeof(BYTE), Elements, fb);
+	fclose(fb);
+}
+
+
+bool OpenFile(const char* filename) {
+	const char* folder = "./files/";
+	string fullname(folder);
+	fullname.append(filename);
+
+	if ((fb = fopen(fullname.c_str(), "wb")) == NULL) {
+		cout << "Cant open " << filename << endl;
+		fclose(fb);
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
 bool ProccessPacket(Packet packettype) {
 	switch (packettype) {
 	case P_ChatMessage: {
+		/*-----------------RECEIVING MSG FROM SERVER----------------------------------*/
 		int msg_size;
 
-		//прием размера сообщения
-		recv(Connection, (char*)&msg_size, sizeof(int), NULL);
+		recv(Connection, (char*)&msg_size, sizeof(int), NULL); //2
 		char* msg = new char[msg_size + 1];
 		msg[msg_size] = '\0';
 
-		//прием сообщения
-		recv(Connection, msg, msg_size, NULL);
+		recv(Connection, msg, msg_size, NULL); //3
 		cout << msg << endl;
 
 		delete[] msg;
 		break;
 	}
-	case P_GetFile:
+	case P_GetFile: {
+		/*------------RECEIVING MSG ABOUT FILE FOUND AND OPENED ON SERVER-------------*/
 		int FisF_size;
 		bool File_is_found;
 
-		recv(Connection, (char*)&FisF_size, sizeof(int), NULL);
-
-		recv(Connection, (char*)&File_is_found, FisF_size, NULL);
+		recv(Connection, (char*)&FisF_size, sizeof(int), NULL); //5
+		recv(Connection, (char*)&File_is_found, FisF_size, NULL); //6
 
 		if (File_is_found) {
 			cout << "File found in system\n";
 		}
-
 		else {
 			cout << "File isn't found in system\n";
+			break;
+		}
+		/*----------------------RECEIVING A FILE FROM A SERVER-----------------------*/
+		bool msg_is_readed = true;
+		int mir_size = sizeof(bool);
+
+		recv(Connection, (char*)&mir_size, sizeof(int), NULL); //7
+		recv(Connection, (char*)&msg_is_readed, sizeof(bool), NULL); //8
+
+		if (msg_is_readed) {
+			cout << "Opening file to write...\n";
+			if (!OpenFile(filewrite)) {
+				cout << "Can't open file to write!\n";
+				break;
+			}
+
+			cout << "Reading file from a server...\n";
+			Writef(fb);
+		}
+		else {
+			cout << "Can't read file from a server\n";
 		}
 		
+		cout << "Successfully readed file from a server!\n";
 		break;
-
+	}
 	default: {
 		cout << "Unrecognized packet: " << packettype << endl;
 		break;
 	}
 	}
-
 	return true;
 }
 
 //функция приема сообщений от сервера
 void ClientHandler() {
 	Packet packettype;
-	int msg_size;
 	while (true) {
-		recv(Connection, (char*)&packettype, sizeof(Packet), NULL);
+		recv(Connection, (char*)&packettype, sizeof(Packet), NULL); //1-/-4
 
 		if (!ProccessPacket(packettype)) {
 			break;
@@ -78,6 +136,8 @@ void ClientHandler() {
 
 
 int main() {
+	setlocale(LC_ALL, "Russian");
+
 	WSAData wsadata;
 	WORD DLLVersion = MAKEWORD(2, 1);
 
